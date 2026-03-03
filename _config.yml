@@ -1,0 +1,15 @@
+title: "Мой блог"
+description: "Статьи из Telegram-канала"
+author: "твой ник"
+lang: ru
+
+theme: minima
+
+minima:
+  skin: dark
+
+permalink: /:year/:month/:title/
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
