@@ -3,9 +3,6 @@ description: ""
 
 theme: minima
 
-minima:
-  skin: dark
-
 permalink: /:year/:month/:title/
 
 plugins:
