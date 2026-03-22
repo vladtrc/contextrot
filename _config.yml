@@ -7,6 +7,9 @@ minima:
 
 permalink: /:year/:month/:title/
 
+exclude:
+  - AGENTS.md
+
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
