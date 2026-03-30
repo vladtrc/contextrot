@@ -9,6 +9,7 @@ permalink: /:year/:month/:title/
 
 exclude:
   - AGENTS.md
+  - sandbox/
 
 plugins:
   - jekyll-feed
