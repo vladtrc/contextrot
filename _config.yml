@@ -1,5 +1,7 @@
 title: "contextrot"
 description: ""
+url: "https://vladtrc.github.io"
+baseurl: "/contextrot"
 
 theme: minima
 minima:

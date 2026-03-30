@@ -6,6 +6,7 @@ import re
 import shutil
 import textwrap
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import matplotlib
@@ -31,7 +32,8 @@ RESULT_IMAGES_DIR = RESULT_DIR / "images"
 PREVIEW_PDF_PATH = RESULT_DIR / "preview.pdf"
 
 ASSETS_DIR = REPO_ROOT / "assets" / "jl_projection"
-POST_PATH = REPO_ROOT / "_posts" / "jl_projection.md"
+POSTS_DIR = REPO_ROOT / "_posts"
+POST_SLUG = PROJECT_DIR.name.replace("_", "-")
 FONT_DIR = Path("/usr/share/fonts/Adwaita")
 
 PLOT_PATTERN = re.compile(r"\{\{\s*plot:(?P<name>[a-z0-9_]+)\s*\}\}")
@@ -39,6 +41,7 @@ PLOT_TAG_PATTERN = re.compile(r"<plot(?P<attrs>[^>]*)\s*/>")
 FORMULA_TAG_PATTERN = re.compile(r"<formula(?P<attrs>[^>]*)>(?P<body>.*?)</formula>", re.DOTALL)
 TAG_ATTR_PATTERN = re.compile(r'(?P<name>[a-z0-9_]+)="(?P<value>.*?)"')
 IMAGE_PATTERN = re.compile(r"!\[(?P<alt>.*?)\]\((?P<src>.*?)\)")
+RELATIVE_URL_PATTERN = re.compile(r"\{\{\s*'(?P<path>/[^']+)'\s*\|\s*relative_url\s*\}\}")
 FORMULA_IMAGE_FILENAMES: set[str] = set()
 
 
@@ -978,6 +981,17 @@ def strip_frontmatter(text: str) -> tuple[str, str]:
     return frontmatter.strip(), body.lstrip()
 
 
+def post_path() -> Path:
+    existing_posts = sorted(POSTS_DIR.glob(f"*-{POST_SLUG}.md"))
+    if existing_posts:
+        return existing_posts[-1]
+    return POSTS_DIR / f"{date.today().isoformat()}-{POST_SLUG}.md"
+
+
+def asset_markdown(alt: str, filename: str) -> str:
+    return f"![{alt}]({{{{ '/assets/jl_projection/{filename}' | relative_url }}}})"
+
+
 def build_markdown() -> str:
     source_text = SOURCE_PATH.read_text(encoding="utf-8")
     frontmatter, body = strip_frontmatter(source_text)
@@ -994,7 +1008,7 @@ def build_markdown() -> str:
             raise ValueError(f"Unknown plot marker: {name}")
         filename, _ = PLOT_BUILDERS[name]
         alt = plot_alts[name]
-        return f"![{alt}](/assets/jl_projection/{filename})"
+        return asset_markdown(alt, filename)
 
     def replace_plot(match: re.Match[str]) -> str:
         return render_plot_reference(match.group("name"))
@@ -1009,7 +1023,7 @@ def build_markdown() -> str:
     def replace_formula_tag(match: re.Match[str]) -> str:
         attrs = parse_tag_attributes(match.group("attrs"))
         filename, alt = render_formula_block(attrs, match.group("body"))
-        return f"![{alt}](/assets/jl_projection/{filename})"
+        return asset_markdown(alt, filename)
 
     rendered_body = FORMULA_TAG_PATTERN.sub(replace_formula_tag, body)
     rendered_body = PLOT_TAG_PATTERN.sub(replace_plot_tag, rendered_body)
@@ -1099,7 +1113,10 @@ def render_preview_pdf(markdown_text: str) -> None:
         if image_match:
             src = image_match.group("src")
             alt = image_match.group("alt")
-            image_path = REPO_ROOT / src.lstrip("/")
+            relative_url_match = RELATIVE_URL_PATTERN.fullmatch(src)
+            image_path = REPO_ROOT / (
+                relative_url_match.group("path").lstrip("/") if relative_url_match else src.lstrip("/")
+            )
             draw_image(cursor, image_path, alt)
             continue
 
@@ -1124,9 +1141,10 @@ def render_preview_pdf(markdown_text: str) -> None:
 def main() -> None:
     ensure_dirs()
     markdown_text = build_markdown()
-    POST_PATH.write_text(markdown_text, encoding="utf-8")
+    output_path = post_path()
+    output_path.write_text(markdown_text, encoding="utf-8")
     render_preview_pdf(markdown_text)
-    print(f"Wrote {POST_PATH}")
+    print(f"Wrote {output_path}")
     print(f"Wrote {PREVIEW_PDF_PATH}")
 
 
